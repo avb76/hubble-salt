@@ -25,8 +25,13 @@ def _vulners_query(pkg_list, url='https://vulners.com/api/v3/audit/audit/'):
     try:
         response = requests.post(url=url, headers=headers, json=data)
         return response.json()
-    except:
-        return {'error': 'Error during the HTTP request'}
+    except requests.Timeout:
+        return {
+            'result': 'ERROR',
+            'data': {
+                'error': 'Request to {0} timed out'.format(url)
+            }
+        }
 
 
 def audit():
