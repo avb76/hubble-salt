@@ -40,7 +40,7 @@ def _vulners_query(packages, url='https://vulners.com/api/v3/audit/audit/'):
 
 
 def _process_vulners(vulners):
-    return vulners
+    return vulners['data']['packages'].keys()
 
 
 def audit(data_list, tags, debug=False):
