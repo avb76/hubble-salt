@@ -23,8 +23,8 @@ This allows the module to run under a certain profile, as all of the other Nova 
 
 from __future__ import absolute_import
 
-import requests
 import sys
+import requests
 
 # TODO: add logging
 
@@ -38,15 +38,18 @@ def audit(data_list, tags, debug=False):
 
     ret = {'Success': [], 'Failure': [], 'Controlled': []}
 
-    local_packages = _get_local_packages()
-    vulners_data = _process_vulners(_vulners_query(local_packages, os = os_name, version = os_version))
+    for profile, data in data_list:
+        if 'vulners_scanner' in data:
 
-    total_packages = len(local_packages)
-    secure_packages = total_packages - len(vulners_data)
+            local_packages = _get_local_packages()
+            vulners_data = _process_vulners(_vulners_query(local_packages, os = os_name, version = os_version))
 
-    ret['Success'] = [{'tag': 'Secure packages',
-                       'description': '{0} out of {1}'.format(secure_packages, total_packages)}]
-    ret['Failure'] = vulners_data
+            total_packages = len(local_packages)
+            secure_packages = total_packages - len(vulners_data)
+
+            ret['Success'] = [{'tag': 'Secure packages',
+                           'description': '{0} out of {1}'.format(secure_packages, total_packages)}]
+            ret['Failure'] = vulners_data
 
     return ret
 
