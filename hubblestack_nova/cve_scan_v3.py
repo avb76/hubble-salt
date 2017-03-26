@@ -1,10 +1,54 @@
+'''
+HubbleStack Nova plugin for auditing installed packages.
+
+The module gets the list of installed packages of the system and queries
+the Vulners.com Linux Vulnerability Audit API.
+
+The API is described at the link below:
+    https://blog.vulners.com/linux-vulnerability-audit-in-vulners/
+
+:maintainer: HubbleStack / avb76
+:maturity: 3/26/2017 (TODO: change the format when the release date is established)
+:platform: Linux
+:requires: SaltStack
+
+This audit module requires a YAML file inside the hubblestack_nova_profiles directory.
+The file should have the following format:
+
+vulners_scanner: <random data>
+
+It does not matter what `<random data>` is, as long as the top key of the file is named `vulners_scanner`.
+This allows the module to run under a certain profile, as all of the other Nova modules do.
+'''
+
 from __future__ import absolute_import
+
 import requests
 import sys
 
+# TODO: add logging
 
 def __virtual__():
     return not sys.platform.startswith('win')
+
+
+def audit(data_list, tags, debug=False):
+    os_name = __grains__.get('os').lower()
+    os_version = __grains__.get('osmajorrelease')
+
+    ret = {'Success': [], 'Failure': [], 'Controlled': []}
+
+    local_packages = _get_local_packages()
+    vulners_data = _process_vulners(_vulners_query(local_packages, os = os_name, version = os_version))
+
+    total_packages = len(local_packages)
+    secure_packages = total_packages - len(vulners_data)
+
+    ret['Success'] = [{'tag': 'Secure packages',
+                       'description': '{0} out of {1}'.format(secure_packages, total_packages)}]
+    ret['Failure'] = vulners_data
+
+    return ret
 
 
 def _get_local_packages():
@@ -25,7 +69,7 @@ def _vulners_query(packages=None, os=None, version=None, url='https://vulners.co
     :param packages: The list on packages to check
     :param os: The name of the operating system
     :param version: The version of the operating system
-    :param url: The URL of the auditing API; the default value is the Vulners.com audit API.
+    :param url: The URL of the auditing API; the default value is the Vulners.com audit API
                 Check the following link for more details:
                     https://blog.vulners.com/linux-vulnerability-audit-in-vulners/
     :return: A dictionary containing the JSON data returned by the HTTP request.
@@ -71,6 +115,13 @@ def _vulners_query(packages=None, os=None, version=None, url='https://vulners.co
 
 
 def _process_vulners(vulners):
+    '''
+    Process the data returned by the API into the format accepted by `hubble.py`.
+
+    :param vulners: The JSON data returned by the API
+    :return: A list of dictionaries as hubble.py swallows
+    '''
+
     packages = vulners.get('data', {}).get('packages')
     if not packages:
         return []
@@ -81,21 +132,3 @@ def _process_vulners(vulners):
             for pkg in packages]
 
 
-def audit(data_list, tags, debug=False):
-    os_name = __grains__.get('os').lower()
-    os_version = __grains__.get('osmajorrelease')
-
-    ret = {'Success': [], 'Failure': [], 'Controlled': []}
-
-    local_packages = _get_local_packages()
-    vulners_data = _process_vulners(_vulners_query(local_packages, os = os_name, version = os_version))
-
-    total_packages = len(local_packages)
-    secure_packages = total_packages - len(vulners_data)
-
-    ret['Success'] = [{'tag': 'Secure packages',
-                       'description': '{0} out of {1}'.format(secure_packages, total_packages)}]
-
-    ret['Failure'] = vulners_data
-
-    return ret
