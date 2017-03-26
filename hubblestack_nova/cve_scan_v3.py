@@ -40,6 +40,9 @@ def _vulners_query(packages, url='https://vulners.com/api/v3/audit/audit/'):
 
 
 def _process_vulners(vulners):
+    # TODO: remove pprint references
+    from pprint import pprint
+    pprint(vulners)
     return vulners['data']['packages'].keys()
 
 
